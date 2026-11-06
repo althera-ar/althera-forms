@@ -70,6 +70,15 @@ services:
       AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
       API_PORT: '4000'
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      # Trusted web origin: OAuth redirects AND the default CORS allowlist entry
+      # (cors.ts refuses to reflect arbitrary origins; without this only
+      # http://localhost:3000 is allowed).
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+      # Optional additional browser origins, comma-separated (public web hosts
+      # the API doesn't live behind).
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # The web/API sit behind ONE reverse proxy (Coolify's Traefik): 1 hop.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       # Community-safe default: no external email, no Dapta coupling.
       EMAIL_PROVIDER: log-only
       # Optional spam protection (Cloudflare Turnstile): set BOTH to let form
@@ -89,12 +98,22 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        # Inlined into the client bundle at build time (see the web Dockerfile).
-        NEXT_PUBLIC_API_URL: http://localhost:4000
+        # INLINED AT BUILD TIME into the client bundle (see the web Dockerfile):
+        # must be the address the BROWSER reaches the API at. Default matches the
+        # docker-host smoke test; a real deploy sets it in the .env / Coolify
+        # variables, e.g. NEXT_PUBLIC_API_URL=https://forms-api.domain.com.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
     environment:
       NODE_ENV: production
       PORT: '3060'
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      # Server-only callers (RSC fetches, server actions) — runtime, and may use
+      # the INTERNAL Compose address so traffic never leaves the Docker network.
+      API_URL: ${API_URL:-http://api:4000}
+      # Trusted web origin: OAuth redirects and post-login returns (never read
+      # from Host/X-Forwarded-Host).
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+      WEB_SESSION_SECRET: ${WEB_SESSION_SECRET:-}
     ports:
       - '3060:3060'
     depends_on:
