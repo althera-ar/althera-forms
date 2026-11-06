@@ -415,6 +415,19 @@ export function createAuthProvider(
         );
       }
       return new WorkOsAuthProvider(db, env, onSignup, projection);
+    case 'password':
+      // The FIRST-PARTY identity: this API hosts the login (the `identity/`
+      // module) and mints the platform JWT itself. The validator is identical —
+      // `WorkOsAuthProvider` only ever verifies a shared-secret HS256 bearer;
+      // "workos" is a historical name, not a dependency. The issuer being this
+      // very process changes nothing on the verifying side.
+      if (!env.JWT_SECRET) {
+        throw new Error(
+          'AUTH_PROVIDER=password requires JWT_SECRET (this API signs the host session token with it; ' +
+            'the same token is verified on every request).',
+        );
+      }
+      return new WorkOsAuthProvider(db, env, onSignup, projection);
     default:
       throw new Error(`Unknown AUTH_PROVIDER: ${String((env as ServerEnv).AUTH_PROVIDER)}`);
   }

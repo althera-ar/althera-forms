@@ -13,5 +13,7 @@ export const ONBOARDING_ENABLED = Symbol('ONBOARDING_ENABLED');
 export const WORKSPACE_PROJECTION = Symbol('WORKSPACE_PROJECTION');
 export const STORAGE = Symbol('STORAGE');
 export const CAPTCHA = Symbol('CAPTCHA');
+/** The first-party identity service (AUTH_PROVIDER=password), or null otherwise. */
+export const IDENTITY = Symbol('IDENTITY');
 /** The MCP OAuth adapter (`McpOAuth`), or null with MCP_OAUTH_PROVIDER unset. */
 export const MCP_OAUTH = Symbol('MCP_OAUTH');

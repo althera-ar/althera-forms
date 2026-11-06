@@ -153,7 +153,10 @@ export const serverEnvSchema = z.object({
   ONBOARDING_WIZARD: boolish.default('true'),
 
   // Auth — unset selects the local dev stub.
-  AUTH_PROVIDER: z.enum(['local', 'workos']).default('local'),
+  // `password` is the FIRST-PARTY provider: this API hosts the login (the
+  // `identity/` module under /iam) and mints the platform JWT itself. The
+  // validator is the same shared-secret HS256 check the `workos` name fronts.
+  AUTH_PROVIDER: z.enum(['local', 'workos', 'password']).default('local'),
 
   // DEV ONLY — which host the local stub logs in as. When AUTH_PROVIDER=local
   // and this is set (or an `x-quill-email` header is sent), the stub resolves
@@ -180,6 +183,25 @@ export const serverEnvSchema = z.object({
   JWT_SECRET: z.string().optional(),
   JWT_ISSUER: z.string().optional(),
   JWT_AUDIENCE: z.string().optional(),
+
+  // --- First-party password identity (AUTH_PROVIDER=password) -----------------
+  // The public base of the hosted login: `/iam/auth/login-url` answers
+  // `<IDENTITY_PUBLIC_URL>/login?…` (an absolute URL the web redirects the
+  // browser to). Required when the password provider is selected — a login
+  // URL cannot be built without the public self-address.
+  IDENTITY_PUBLIC_URL: z.string().url().optional(),
+  // The workspace the platform JWT's `account_id` claim names: the Forms API
+  // JIT-provisions ONE account with this external_id and the team's members
+  // under it. Stable across restarts by definition — it IS the account.
+  IDENTITY_ACCOUNT_ID: z.string().min(1).default('wsp_althera'),
+  // Token lifetimes. The access token is short-lived by design (the web
+  // refreshes transparently); the refresh token is the long-lived credential.
+  IDENTITY_ACCESS_TTL_S: z.coerce.number().int().positive().optional(),
+  IDENTITY_REFRESH_TTL_DAYS: z.coerce.number().int().positive().optional(),
+  // How long a JUST-ROTATED refresh token's previous pair still answers:
+  // concurrent server actions race the refresh (both must land on valid
+  // tokens) — see apps/web/lib/auth-session.ts.
+  IDENTITY_REFRESH_GRACE_S: z.coerce.number().int().positive().optional(),
 
   // Outbox worker (B7/DM1): drains durable side-effects (submission emails,
   // webhook delivery) with retry+backoff. Enabled by default; the poll interval
@@ -587,6 +609,35 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
       'Refusing to boot: AUTH_PROVIDER=local is an unauthenticated development stub and cannot run in ' +
         'production. Set AUTH_PROVIDER=workos (with the private auth overlay) or another real provider.',
     );
+  }
+  // The first-party identity needs its three legs to be usable, so say so at
+  // boot rather than on the first login. HTTPS is a production invariant: the
+  // login hand-off and the `?session=` blob ride this address.
+  if (parsed.data.AUTH_PROVIDER === 'password') {
+    if (!parsed.data.IDENTITY_PUBLIC_URL) {
+      throw new Error(
+        'Refusing to boot: AUTH_PROVIDER=password requires IDENTITY_PUBLIC_URL (the public address of this ' +
+          "API, e.g. https://api.example.com — the web's IAM_BASE_URL is <it>/iam and its browser is sent there to log in).",
+      );
+    }
+    if (parsed.data.NODE_ENV === 'production' && !parsed.data.IDENTITY_PUBLIC_URL.startsWith('https://')) {
+      throw new Error(
+        'Refusing to boot: AUTH_PROVIDER=password needs an HTTPS IDENTITY_PUBLIC_URL in production ' +
+          `(got ${parsed.data.IDENTITY_PUBLIC_URL}).`,
+      );
+    }
+    if (!parsed.data.JWT_SECRET) {
+      throw new Error(
+        'Refusing to boot: AUTH_PROVIDER=password requires JWT_SECRET (this API signs the host session ' +
+          'token with it; the validator in auth.provider.workos.ts verifies it on every request).',
+      );
+    }
+    if (!parsed.data.PUBLIC_APP_URL) {
+      throw new Error(
+        'Refusing to boot: AUTH_PROVIDER=password requires PUBLIC_APP_URL (the web origin — a login ' +
+          'returnTo may only leave for the deployment\'s own web, never an arbitrary address).',
+      );
+    }
   }
   assertCaptchaEnv(parsed.data);
   // A malformed deprecated-hosts setting fails here, at boot, not on the first

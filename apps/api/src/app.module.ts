@@ -12,6 +12,7 @@ import {
   EMAIL,
   ENTITLEMENTS,
   ENV,
+  IDENTITY,
   MCP_OAUTH,
   NOTIFIER,
   ONBOARDING_ENABLED,
@@ -63,6 +64,8 @@ import {
   HubspotPropertiesService,
   IntegrationsController,
 } from './integrations.controller';
+import { IdentityController } from './identity/identity.controller';
+import { IdentityService } from './identity/identity.service';
 
 /** Product telemetry for "a person joined" — shared by the auth provider and the projection. */
 function signupObserver(productAnalytics: AnalyticsEffects): SignupObserver {
@@ -102,6 +105,10 @@ function signupObserver(productAnalytics: AnalyticsEffects): SignupObserver {
     // GET /.well-known/openai-apps-challenge: OpenAI's domain-verification
     // token for the ChatGPT app. 404 unless OPENAI_APPS_CHALLENGE_TOKEN is set.
     OpenAiAppsChallengeController,
+    // The first-party identity (AUTH_PROVIDER=password): the hosted login page
+    // and the web's IAM contract (/iam/auth/*). Routes live outside the bearer
+    // surface — the provider verifies THAT surface, and this module mints it.
+    IdentityController,
   ],
   providers: [
     { provide: ENV, useFactory: () => loadServerEnv() },
@@ -260,6 +267,16 @@ function signupObserver(productAnalytics: AnalyticsEffects): SignupObserver {
     // keys only. The adapter verifies the identity provider's tokens; the
     // person a token names is mapped through dForms' own members.
     { provide: MCP_OAUTH, useFactory: (env: ServerEnv) => createMcpOAuth(mcpOAuthSettings(env)), inject: [ENV] },
+    // The first-party identity (AUTH_PROVIDER=password): login verification, token
+    // minting and refresh rotation. NULL for every other provider — the /iam/*
+    // routes then answer 404, and no env of a `local`/`workos` boot ever gets
+    // validated for identity legs it will never use.
+    {
+      provide: IDENTITY,
+      useFactory: (env: ServerEnv, db: Db) =>
+        env.AUTH_PROVIDER === 'password' ? new IdentityService(env, db) : null,
+      inject: [ENV, DB],
+    },
   ],
 })
 export class AppModule {}

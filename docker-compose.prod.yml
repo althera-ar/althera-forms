@@ -79,6 +79,19 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       # The web/API sit behind ONE reverse proxy (Coolify's Traefik): 1 hop.
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      # --- First-party identity (AUTH_PROVIDER=password) ------------------------
+      # PUBLIC_APP_URL below doubles as the ONLY host a login returnTo may
+      # leave for. IDENTITY_PUBLIC_URL is this API's public self-address (its
+      # /iam/* serves the web's login contract); IDENTITY_ACCOUNT_ID is the
+      # workspace the JIT provisions everyone's membership under.
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ISSUER: ${JWT_ISSUER:-}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      IDENTITY_PUBLIC_URL: ${IDENTITY_PUBLIC_URL:-}
+      IDENTITY_ACCOUNT_ID: ${IDENTITY_ACCOUNT_ID:-}
+      IDENTITY_ACCESS_TTL_S: ${IDENTITY_ACCESS_TTL_S:-}
+      IDENTITY_REFRESH_TTL_DAYS: ${IDENTITY_REFRESH_TTL_DAYS:-}
+      IDENTITY_REFRESH_GRACE_S: ${IDENTITY_REFRESH_GRACE_S:-}
       # Community-safe default: no external email, no Dapta coupling.
       EMAIL_PROVIDER: log-only
       # Optional spam protection (Cloudflare Turnstile): set BOTH to let form
