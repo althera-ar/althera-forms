@@ -1,6 +1,7 @@
 /**
- * The identity module's HTTP surface (prefix /iam: the web's IAM_BASE_URL is
- * `<this API's public address>/iam`, so every contract route lives here).
+ * The identity module's HTTP surface ("iam" prefix, hence the /iam paths):
+ * the web's IAM_BASE_URL equals IDENTITY_PUBLIC_URL, a /iam-suffixed public
+ * address of this API, so every contract route lives here.
  *
  * Public on purpose — the same why /health is public: the contract routes are
  * the login door. Credentials themselves only touch POST /iam/login, which is

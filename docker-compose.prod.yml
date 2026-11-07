@@ -81,9 +81,9 @@ services:
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       # --- First-party identity (AUTH_PROVIDER=password) ------------------------
       # PUBLIC_APP_URL below doubles as the ONLY host a login returnTo may
-      # leave for. IDENTITY_PUBLIC_URL is this API's public self-address (its
-      # /iam/* serves the web's login contract); IDENTITY_ACCOUNT_ID is the
-      # workspace the JIT provisions everyone's membership under.
+      # leave for. IDENTITY_PUBLIC_URL is /iam-suffixed this API's public
+      # self-address (the web's IAM_BASE_URL equals it); IDENTITY_ACCOUNT_ID is
+      # the workspace the JIT provisions everyone's membership under.
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ISSUER: ${JWT_ISSUER:-}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-}
@@ -122,6 +122,16 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
       # Server-only callers (RSC fetches, server actions) — runtime, and may use
       # the INTERNAL Compose address so traffic never leaves the Docker network.
+      # The web speaks the UPSTREAM provider names ('local' | 'workos'): a
+      # first-party password identity on the API is, from the web's seat, the
+      # 'workos' provider (login hand-off to IAM_BASE_URL). So Coolify sets
+      # AUTH_PROVIDER=password on the API and WEB_AUTH_PROVIDER=workos here.
+      AUTH_PROVIDER: ${WEB_AUTH_PROVIDER:-}
+      # The login delegate: <IDENTITY_PUBLIC_URL>/iam in production. The web
+      # redirects /login through it (workos provider) and calls /iam/auth/*
+      # for refresh/logout. For AUTH_PROVIDER=password that is THIS compose's
+      # own id. Server-only; never exposed.
+      IAM_BASE_URL: ${IAM_BASE_URL:-}
       API_URL: ${API_URL:-http://api:4000}
       # Trusted web origin: OAuth redirects and post-login returns (never read
       # from Host/X-Forwarded-Host).
