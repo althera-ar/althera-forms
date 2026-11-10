@@ -55,6 +55,33 @@ services:
         condition: service_healthy
     restart: 'no'
 
+  # One-shot: apply the operator's IDENTITY_USERS_JSON user manifest to the
+  # identity tables, then exit. Runs AFTER migrate so the tables exist. This is
+  # how a DISTROLESS deploy provisions its team without any shell: the api
+  # image carries no terminal (Coolify's "terminal" can exec nothing there).
+  # Idempotent: existing emails are skipped unless an entry says
+  # `"reset": true`; blank/unset manifest = "nothing to do", exit 0.
+  identity-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command:
+      [
+        'node_modules/tsx/dist/cli.mjs',
+        '--tsconfig',
+        'tsconfig.runtime.json',
+        'src/cli/identity-seed.ts',
+      ]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      IDENTITY_USERS_JSON: ${IDENTITY_USERS_JSON:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: 'no'
+
   api:
     build:
       context: .

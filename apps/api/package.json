@@ -10,6 +10,7 @@
     "start": "tsx src/main.ts",
     "auth:mint": "tsx src/cli/mint-token.ts",
     "identity:user": "tsx src/cli/identity-user.ts",
+    "identity:seed": "tsx src/cli/identity-seed.ts",
     "build": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src",
     "test": "vitest run",
